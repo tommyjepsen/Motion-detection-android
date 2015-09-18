@@ -12,13 +12,15 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.ImageView;
 
-import com.squareup.picasso.Picasso;
-
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import dk.nodes.utils.NLog;
+import io.socket.client.IO;
+import io.socket.client.Socket;
+import io.socket.emitter.Emitter;
 
 public class MainActivity extends Activity {
 
@@ -33,6 +35,8 @@ public class MainActivity extends Activity {
     private Handler h = new Handler();
     private int iterateCameraTrigger = 500; //Miliseconds
     private int diffCountMaxExceed = 20; //Magic number
+    private Socket mSocket;
+    private String ipAddress = "http://192.168.1.209:3000";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -42,6 +46,12 @@ public class MainActivity extends Activity {
         iv_image = (ImageView) findViewById(R.id.imageView);
         sv = (SurfaceView) findViewById(R.id.surfaceView);
 
+        try {
+            mSocket = IO.socket(ipAddress);
+            mSocket.connect();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
 
         sHolder = sv.getHolder();
         sHolder.addCallback(new SurfaceHolder.Callback() {
@@ -87,9 +97,18 @@ public class MainActivity extends Activity {
             }
         });
         sHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
     }
 
-    // Start the iteration
+    private void attemptSend() {
+        try {
+            String message = "Different image!";
+
+            mSocket.emit("visitor", message);
+        } catch (Exception e) {
+            NLog.e(e);
+        }
+    }
 
     private void iterateCameraTrigger() {
         h.postDelayed(
@@ -116,6 +135,7 @@ public class MainActivity extends Activity {
                 NLog.d(MainActivity.class.getSimpleName(), "SAME IMAGE");
             } else {
                 NLog.d(MainActivity.class.getSimpleName(), "DIFFERENT IMAGE BRO");
+                attemptSend();
             }
         }
 
